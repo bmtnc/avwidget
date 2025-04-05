@@ -4,12 +4,22 @@
 .RData
 .Ruserdata
 inst/doc
+
 # Cache and sensitive data
 llm_cache/
 llm_cache/*.txt
 cache/
 .Renviron
+.Rprofile
+
+# OS specific
+.DS_Store
+**/.DS_Store
+
 # IDE
 .Rproj.user/
-.DS_Store
-.Rprofile
+
+# Generated files
+*.html
+reports/*.html
+*_files/

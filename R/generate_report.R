@@ -3,7 +3,7 @@
 #' @param ticker Character string of the stock ticker symbol
 #' @param latest_price Numeric value of the latest known price (optional)
 #' @param latest_price_date Date of the latest price (defaults to current date if latest_price is provided)
-#' @return Path to generated report
+#' @return Vector of paths to generated reports
 #'
 generate_report <- function(ticker, 
                           latest_price = NULL, 
@@ -20,24 +20,45 @@ generate_report <- function(ticker,
   }
   
   # Generate report
-  output_file <- paste0(ticker, "_", Sys.Date(), ".html")
+  base_name <- paste0(ticker, "_", Sys.Date())
   output_dir <- "reports"
   
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
   }
   
-  rmarkdown::render(
+  # Render both formats
+  output_files <- c()
+
+  # HTML output
+  html_file <- rmarkdown::render(
     input = "dashboard.Rmd",
-    output_file = output_file,
+    output_format = "html_document",
+    output_file = paste0(base_name, ".html"),
     output_dir = output_dir,
     params = list(
       ticker = ticker,
       latest_price = latest_price,
       latest_price_date = latest_price_date
     ),
-    envir = new.env()  # Create a new environment for rendering
+    envir = new.env()
   )
+  output_files <- c(output_files, html_file)
   
-  return(file.path(output_dir, output_file))
+  # Markdown output
+  md_file <- rmarkdown::render(
+    input = "dashboard.Rmd",
+    output_format = "github_document",
+    output_file = paste0(base_name, ".md"),
+    output_dir = output_dir,
+    params = list(
+      ticker = ticker,
+      latest_price = latest_price,
+      latest_price_date = latest_price_date
+    ),
+    envir = new.env()
+  )
+  output_files <- c(output_files, md_file)
+
+  return(output_files)
 }

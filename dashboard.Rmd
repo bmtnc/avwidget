@@ -1,5 +1,7 @@
 ---
-output: html_document
+output:
+  html_document: default
+  github_document: default
 params:
   ticker: NA
   latest_price: NA
