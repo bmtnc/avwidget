@@ -19,7 +19,7 @@ cache/
 # IDE
 .Rproj.user/
 
-# Generated files
+# Generated HTML files but keep markdown support files
 *.html
-reports/*.html
-*_files/
+!reports/*.md
+!reports/*_files/
