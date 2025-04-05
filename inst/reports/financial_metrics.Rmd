@@ -1,0 +1,57 @@
+---
+title: "Financial Metrics Visualization"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(scales)
+library(dplyr)
+
+
+# Read data (using relative path)
+df <- read.csv("../data/azo_bs.csv")  # Using relative path to go up one level
+
+# Create plot
+ggplot2::ggplot(df, ggplot2::aes(x = Date)) +
+  ggplot2::geom_bar(
+    ggplot2::aes(y = Shares_Outstanding, fill = "Shares Outstanding"),
+    stat = "identity",
+    alpha = 0.6
+  ) +
+  ggplot2::geom_line(
+    ggplot2::aes(y = Net_Debt, color = "Net Debt"),
+    size = 1
+  ) +
+  ggplot2::scale_y_continuous(
+    name = "Shares Outstanding (Millions)",
+    labels = scales::label_number(accuracy = 0.01),
+    sec.axis = ggplot2::sec_axis(
+      ~. * (max(df$Net_Debt, na.rm = TRUE) / max(df$Shares_Outstanding, na.rm = TRUE)),
+      name = "Net Debt (Billions USD)",
+      labels = scales::label_number(accuracy = 0.1)
+    )
+  ) +
+  ggplot2::scale_fill_manual(values = c("Shares Outstanding" = "blue")) +
+  ggplot2::scale_color_manual(values = c("Net Debt" = "red")) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    axis.title.y.left = ggplot2::element_text(color = "blue"),
+    axis.text.y.left = ggplot2::element_text(color = "blue"),
+    axis.title.y.right = ggplot2::element_text(color = "red"),
+    axis.text.y.right = ggplot2::element_text(color = "red"),
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  ) +
+  ggplot2::labs(
+    title = "AutoZone - Shares Outstanding vs Net Debt",
+    x = "Date"
+  ) +
+  ggplot2::guides(
+    fill = ggplot2::guide_legend(title = NULL),
+    color = ggplot2::guide_legend(title = NULL)
+  )
+```

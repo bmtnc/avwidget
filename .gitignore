@@ -1,0 +1,15 @@
+# R specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+inst/doc
+# Cache and sensitive data
+llm_cache/
+llm_cache/*.txt
+cache/
+.Renviron
+# IDE
+.Rproj.user/
+.DS_Store
+.Rprofile

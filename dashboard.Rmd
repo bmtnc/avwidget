@@ -1,0 +1,308 @@
+---
+output: html_document
+params:
+  ticker: NA
+  latest_price: NA
+  latest_price_date: !r Sys.Date()
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+
+library(httr2)
+library(dplyr)
+library(gt)
+library(scales)
+library(ggplot2)
+library(lubridate)
+library(tibble)
+library(tidyr)
+library(gridExtra)
+
+
+# Set custom theme for all plots
+ggplot2::theme_set(
+  ggplot2::theme_minimal() +
+    ggplot2::theme(
+      panel.grid.minor = ggplot2::element_blank(),
+      panel.grid.major.x = ggplot2::element_blank(),
+      panel.grid.major.y = ggplot2::element_line(color = "gray90"),
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      axis.title = ggplot2::element_text(size = 10),
+      axis.text = ggplot2::element_text(size = 9),
+      legend.position = "bottom"
+    )
+)
+
+devtools::load_all()
+
+```
+
+
+
+```{r fetch-data}
+# Fetch all data
+api_key <- Sys.getenv("ALPHA_VANTAGE_API_KEY")
+if (api_key == "") stop("ALPHA_VANTAGE_API_KEY environment variable is not set")
+
+# Function to fetch company overview
+fetch_company_overview <- function(ticker, api_key) {
+  make_alpha_vantage_request("OVERVIEW", ticker, api_key)
+}
+
+# First AV request
+data <- fetch_company_overview(params$ticker, api_key)
+Sys.sleep(1)  # 1 second delay
+
+# Second AV request
+raw_price_data <- fetch_weekly_prices(params$ticker, api_key)
+
+# adjusted close
+price_data <- raw_price_data %>%
+  dplyr::select(date, adjusted_close)
+
+unadjusted_price_data <- raw_price_data %>%
+  dplyr::select(date, close = close)
+
+
+# In the fetch-data chunk, update the manual price handling:
+if (!is.null(params$latest_price)) {
+  latest_row <- data.frame(
+    date = params$latest_price_date,
+    close = params$latest_price,           # Add unadjusted close
+    adjusted_close = params$latest_price   # Keep adjusted close for price chart
+  )
+  
+  # Replace or add the latest price
+  price_data <- price_data %>%
+    dplyr::filter(date < params$latest_price_date) %>%
+    dplyr::bind_rows(latest_row) %>%
+    dplyr::arrange(date)
+}
+
+Sys.sleep(1)  # 1 second delay
+
+# Third AV request - Financial Data
+financial_data <- create_financial_time_series(params$ticker, api_key, period = "quarterly")
+
+# Calculate historical market cap
+market_cap_history <- calculate_historical_market_cap(price_data, financial_data)
+
+```
+
+```{r fetch-llm-desc, eval=TRUE}
+
+
+# Get enhanced description
+enhanced_description <- tryCatch(
+  get_enhanced_description(
+    description = data$Description,
+    ticker = params$ticker
+  ),
+  error = function(e) {
+    warning("Enhanced description generation failed: ", e$message)
+    data$Description  # fallback to original description
+  }
+)
+
+# Get shortened description
+short_description <- tryCatch(
+  get_shortened_description(
+    enhanced_description = enhanced_description,
+    ticker = params$ticker
+  ),
+  error = function(e) {
+    warning("Shortened description generation failed: ", e$message)
+    data$Description  # fallback to original description
+  }
+)
+```
+
+```{r analyze-earnings-call, eval=TRUE}
+
+
+# Get current quarter
+current_date <- Sys.Date()
+current_quarter <- quarter(current_date)
+current_year <- year(current_date)
+
+# If we're in Q1, we want the previous year's Q4
+if(current_quarter == 1) {
+  latest_quarter <- sprintf("%dQ4", current_year - 1)
+} else {
+  latest_quarter <- sprintf("%dQ%d", current_year, current_quarter - 1)
+}
+
+# Fetch transcript once
+transcript_result <- tryCatch({
+  fetch_transcript_text(params$ticker, latest_quarter, api_key)
+}, error = function(e) {
+  warning("Transcript fetch failed: ", e$message)
+  NULL
+})
+
+# Generate both analyses if transcript is available
+if (!is.null(transcript_result)) {
+  earnings_analysis <- tryCatch({
+    analyze_earnings_call(transcript_result, params$ticker)  # transcript_result contains both text and quarter
+  }, error = function(e) {
+    warning("Earnings call analysis failed: ", e$message)
+    list(
+      fundamentals = "Earnings call analysis currently unavailable.",
+      qa = NULL
+    )
+  })
+  
+  business_narrative <- tryCatch({
+    generate_business_narrative(transcript_result, params$ticker)  # transcript_result contains both text and quarter
+  }, error = function(e) {
+    warning("Business narrative generation failed: ", e$message)
+    "Business narrative analysis currently unavailable."
+  })
+} else {
+  earnings_analysis <- list(
+    fundamentals = "Earnings call analysis currently unavailable due to missing transcript.",
+    qa = NULL,
+    quarter = latest_quarter  # Include quarter information in failure case
+  )
+  business_narrative <- "Business narrative currently unavailable due to missing transcript data."
+}
+```
+
+
+## `r data$Name` (`r data$Symbol`)  
+**Exchange**: `r data$Exchange` | **Sector**: `r data$Sector` | **Industry**: `r data$Industry`  
+</br>
+
+### Overview
+`r if(exists("enhanced_description") && !is.null(enhanced_description)) short_description else data$Description`
+</br>
+
+
+### Charts {.tabset}
+
+#### Price History
+```{r plot-chart-1, fig.align = "center", results='hide'}
+create_price_chart(price_data, params$ticker, start_date = "2018-01-01")
+```
+
+#### Market Cap History
+```{r plot-chart-2, fig.align = "center", results='hide'}
+create_market_cap_chart(market_cap_history, params$ticker)
+```
+
+#### Price/EBIT
+```{r plot-price-ebit, fig.align = "center", results='hide'}
+tryCatch({
+  if (!("ebit" %in% names(financial_data)) || 
+      all(is.na(financial_data$ebit)) || 
+      all(financial_data$ebit == 0)) {
+    cat("Price/EBIT chart unavailable - insufficient EBIT data")
+  } else {
+    chart <- create_price_ebit_chart(market_cap_history, financial_data, params$ticker)
+    if (!is.null(chart)) print(chart)
+  }
+}, error = function(e) {
+  cat("Price/EBIT chart unavailable -", e$message)
+})
+```
+
+#### EBIT Growth
+```{r plot-ebit-growth, fig.align = "center", fig.height=8, results='hide'}
+tryCatch({
+  if (!("ebit" %in% names(financial_data)) || 
+      all(is.na(financial_data$ebit))) {
+    cat("EBIT Growth chart unavailable - insufficient data")
+  } else {
+    chart <- create_ebit_growth_chart(financial_data, params$ticker)
+    if (!is.null(chart)) print(chart)
+  }
+}, error = function(e) {
+  cat("EBIT Growth chart unavailable -", e$message)
+})
+```
+
+#### Price/Gross Profit
+```{r plot-price-gp, fig.align = "center", results='hide'}
+tryCatch({
+  if (!("gross_profit" %in% names(financial_data)) || 
+      all(is.na(financial_data$gross_profit)) || 
+      all(financial_data$gross_profit == 0)) {
+    cat("Price/Gross Profit chart unavailable - insufficient Gross Profit data")
+  } else {
+    chart <- create_price_gp_chart(market_cap_history, financial_data, params$ticker)
+    if (!is.null(chart)) print(chart)
+  }
+}, error = function(e) {
+  cat("Price/Gross Profit chart unavailable -", e$message)
+})
+```
+
+#### Gross Profit Growth
+```{r plot-gp-growth, fig.align = "center", fig.height=8, results='hide'}
+tryCatch({
+  if (!("gross_profit" %in% names(financial_data)) || 
+      all(is.na(financial_data$gross_profit))) {
+    cat("Gross Profit Growth chart unavailable - insufficient data")
+  } else {
+    chart <- create_gp_growth_chart(financial_data, params$ticker)
+    if (!is.null(chart)) print(chart)
+  }
+}, error = function(e) {
+  cat("Gross Profit Growth chart unavailable -", e$message)
+})
+```
+
+#### Drawdown Analysis
+```{r plot-chart-3, fig.align = "center", results='hide'}
+create_drawdown_chart(price_data, params$ticker)
+```
+
+
+
+
+### Metrics
+```{r display-tables}
+metrics_df <- create_metrics_dataframe(data)
+create_consolidated_table(metrics_df)
+```
+</br>
+
+### Business Narrative
+```{r business-narrative, results='asis'}
+if (!is.null(business_narrative)) {
+  cat(business_narrative)
+} else {
+  cat("Business narrative analysis currently unavailable.")
+}
+```
+
+### Earnings Call Analysis
+```{r earnings-analysis, results='asis'}
+if (!is.null(earnings_analysis$fundamentals)) {
+  cat(earnings_analysis$fundamentals)
+} else {
+  cat("Fundamental analysis currently unavailable.")
+}
+```
+
+
+### Analyst Q&A Insights
+```{r earnings-qa-analysis, results='asis'}
+
+if (!is.null(earnings_analysis$qa)) {
+  cat(earnings_analysis$qa)
+} else {
+  cat("Q&A analysis currently unavailable.")
+}
+```
