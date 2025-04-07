@@ -114,9 +114,9 @@ create_price_gp_chart <- function(market_cap_history, financial_data,
       plot.margin = ggplot2::margin(t = 20, r = 50, b = 10, l = 10)
     ) +
     ggplot2::labs(
-      title = paste0(ticker, " - P/GP"),
+      title = "Price/Gross Profit",
       x = "",
-      y = "Price/Gross Profit"
+      y = ""
     ) +
     ggplot2::scale_y_continuous(
       labels = scales::number_format(accuracy = 0.1),

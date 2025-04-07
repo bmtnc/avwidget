@@ -14,7 +14,7 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
   if (!all(c("date", "ebit") %in% names(financial_data))) {
     stop("financial_data must contain 'date' and 'ebit' columns")
   }
-  
+
   # Calculate TTM EBIT and YoY Growth in one pipeline
   plot_data <- financial_data %>%
     dplyr::mutate(ebit = as.numeric(ebit)) %>%
@@ -38,17 +38,17 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
       !is.na(ttm_ebit),
       date >= lubridate::as_date(start_date)
     )
-  
+
   # Get latest values for annotations
   latest_data <- plot_data %>% dplyr::slice_tail(n = 1)
-  
+
   # Define shared date scale
   date_scale <- ggplot2::scale_x_date(
     date_breaks = "1 year",
     date_labels = "%Y",
     expand = ggplot2::expansion(mult = c(0.02, 0.02))
   )
-  
+
   # Create TTM EBIT chart
   p1 <- ggplot2::ggplot(plot_data, ggplot2::aes(x = date, y = ttm_ebit)) +
     ggplot2::geom_col(fill = "steelblue", width = 85) +
@@ -61,8 +61,7 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
       plot.margin = ggplot2::unit(c(0.5, 0.5, 0, 0.5), "cm")
     ) +
     ggplot2::labs(
-      title = paste0(ticker, " - TTM EBIT"),
-      y = "TTM EBIT"
+      title = "TTM EBIT"
     ) +
     ggplot2::scale_y_continuous(
       labels = scales::dollar_format(scale = 1e-9, suffix = "B"),
@@ -78,7 +77,7 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
       vjust = -0.5,
       size = 3
     )
-  
+
   # Create YoY Growth chart
   p2 <- ggplot2::ggplot(plot_data, ggplot2::aes(x = date, y = yoy_growth)) +
     ggplot2::geom_col(
@@ -116,7 +115,7 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
       vjust = ifelse(latest_data$yoy_growth >= 0, -0.5, 1.5),
       size = 3
     )
-  
+
   # Combine charts using gridExtra
   gridExtra::grid.arrange(
     p1, p2,

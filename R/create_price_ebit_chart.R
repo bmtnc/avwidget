@@ -115,9 +115,9 @@ create_price_ebit_chart <- function(market_cap_history, financial_data,
       plot.margin = ggplot2::margin(t = 20, r = 50, b = 10, l = 10)
     ) +
     ggplot2::labs(
-      title = paste0(ticker, " - P/EBIT"),
+      title = paste0("P/EBIT"),
       x = "",
-      y = "P/EBIT"
+      y = ""
     ) +
     ggplot2::scale_y_continuous(
       labels = scales::number_format(accuracy = 0.1),

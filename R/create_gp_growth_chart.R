@@ -14,7 +14,7 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
   if (!all(c("date", "gross_profit") %in% names(financial_data))) {
     stop("financial_data must contain 'date' and 'gross_profit' columns")
   }
-  
+
   # Calculate TTM Gross Profit and YoY Growth in one pipeline
   plot_data <- financial_data %>%
     dplyr::mutate(gross_profit = as.numeric(gross_profit)) %>%
@@ -38,17 +38,17 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
       !is.na(ttm_gp),
       date >= lubridate::as_date(start_date)
     )
-  
+
   # Get latest values for annotations
   latest_data <- plot_data %>% dplyr::slice_tail(n = 1)
-  
+
   # Define shared date scale
   date_scale <- ggplot2::scale_x_date(
     date_breaks = "1 year",
     date_labels = "%Y",
     expand = ggplot2::expansion(mult = c(0.02, 0.02))
   )
-  
+
   # Create TTM Gross Profit chart
   p1 <- ggplot2::ggplot(plot_data, ggplot2::aes(x = date, y = ttm_gp)) +
     ggplot2::geom_col(fill = "steelblue", width = 85) +
@@ -61,8 +61,7 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
       plot.margin = ggplot2::unit(c(0.5, 0.5, 0, 0.5), "cm")
     ) +
     ggplot2::labs(
-      title = paste0(ticker, " - TTM Gross Profit"),
-      y = "TTM Gross Profit"
+      title = "TTM Gross Profit"
     ) +
     ggplot2::scale_y_continuous(
       labels = scales::dollar_format(scale = 1e-9, suffix = "B"),
@@ -78,7 +77,7 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
       vjust = -0.5,
       size = 3
     )
-  
+
   # Create YoY Growth chart
   p2 <- ggplot2::ggplot(plot_data, ggplot2::aes(x = date, y = yoy_growth)) +
     ggplot2::geom_col(
@@ -116,7 +115,7 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
       vjust = ifelse(latest_data$yoy_growth >= 0, -0.5, 1.5),
       size = 3
     )
-  
+
   # Combine charts using gridExtra
   gridExtra::grid.arrange(
     p1, p2,

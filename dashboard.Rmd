@@ -97,18 +97,28 @@ Sys.sleep(1)  # 1 second delay
 # Third AV request - Financial Data
 financial_data <- create_financial_time_series(params$ticker, api_key, period = "quarterly")
 
+
+# Fourth AV request - Eanings Transcript
+transcript_result <- tryCatch({
+  fetch_transcript_text(params$ticker, latest_quarter, api_key)
+}, error = function(e) {
+  warning("Transcript fetch failed: ", e$message)
+  NULL
+})
+
 # Calculate historical market cap
 market_cap_history <- calculate_historical_market_cap(price_data, financial_data)
+
 
 ```
 
 ```{r fetch-llm-desc, eval=TRUE}
 
-
-# Get enhanced description
+# Get enhanced description using both sources
 enhanced_description <- tryCatch(
-  get_enhanced_description(
-    description = data$Description,
+  generate_combined_description(
+    alpha_vantage_desc = data$Description,
+    transcript_result = transcript_result,  # From previous chunk
     ticker = params$ticker
   ),
   error = function(e) {
@@ -117,22 +127,21 @@ enhanced_description <- tryCatch(
   }
 )
 
-# Get shortened description
-short_description <- tryCatch(
-  get_shortened_description(
+# Get secular trends analysis
+secular_trends <- tryCatch(
+  analyze_secular_trends(
     enhanced_description = enhanced_description,
     ticker = params$ticker
   ),
   error = function(e) {
-    warning("Shortened description generation failed: ", e$message)
-    data$Description  # fallback to original description
+    warning("Secular trends analysis failed: ", e$message)
+    NULL
   }
 )
+
 ```
 
 ```{r analyze-earnings-call, eval=TRUE}
-
-
 # Get current quarter
 current_date <- Sys.Date()
 current_quarter <- quarter(current_date)
@@ -145,15 +154,7 @@ if(current_quarter == 1) {
   latest_quarter <- sprintf("%dQ%d", current_year, current_quarter - 1)
 }
 
-# Fetch transcript once
-transcript_result <- tryCatch({
-  fetch_transcript_text(params$ticker, latest_quarter, api_key)
-}, error = function(e) {
-  warning("Transcript fetch failed: ", e$message)
-  NULL
-})
-
-# Generate both analyses if transcript is available
+# Generate analysis if transcript is available
 if (!is.null(transcript_result)) {
   earnings_analysis <- tryCatch({
     analyze_earnings_call(transcript_result, params$ticker)  # transcript_result contains both text and quarter
@@ -164,21 +165,16 @@ if (!is.null(transcript_result)) {
       qa = NULL
     )
   })
-  
-  business_narrative <- tryCatch({
-    generate_business_narrative(transcript_result, params$ticker)  # transcript_result contains both text and quarter
-  }, error = function(e) {
-    warning("Business narrative generation failed: ", e$message)
-    "Business narrative analysis currently unavailable."
-  })
 } else {
   earnings_analysis <- list(
     fundamentals = "Earnings call analysis currently unavailable due to missing transcript.",
     qa = NULL,
     quarter = latest_quarter  # Include quarter information in failure case
   )
-  business_narrative <- "Business narrative currently unavailable due to missing transcript data."
 }
+  
+business_narrative <- NA
+
 ```
 
 
@@ -187,9 +183,13 @@ if (!is.null(transcript_result)) {
 </br>
 
 ### Overview
-`r if(exists("enhanced_description") && !is.null(enhanced_description)) short_description else data$Description`
+`r if(exists("enhanced_description") && !is.null(enhanced_description)) enhanced_description else data$Description`
 </br>
 
+#### Secular Trends
+`r if(!is.null(secular_trends)) secular_trends`
+
+</br>
 
 ### Charts {.tabset}
 
@@ -280,14 +280,6 @@ create_consolidated_table(metrics_df)
 ```
 </br>
 
-### Business Narrative
-```{r business-narrative, results='asis'}
-if (!is.null(business_narrative)) {
-  cat(business_narrative)
-} else {
-  cat("Business narrative analysis currently unavailable.")
-}
-```
 
 ### Earnings Call Analysis
 ```{r earnings-analysis, results='asis'}

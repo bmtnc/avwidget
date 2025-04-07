@@ -6,20 +6,32 @@
 #' @export
 analyze_earnings_fundamentals <- function(transcript_result, ticker) {
   prompt <- paste0(
-    sprintf("Analyze this earnings call transcript from %s focusing ONLY on fundamental business results, developments, and forward-looking trends.", 
+    sprintf("Analyze this earnings call transcript from %s. Present your analysis in R markdown format with a brief narrative overview followed by organized sections with bullet points.", 
             transcript_result$quarter),
-    "\n\nKey areas to address:",
-    "\n- Revenue and margin trends",
-    "\n- End market demand signals",
-    "\n- Technical or product developments",
-    "\n- Geographic or segment performance",
-    "\n- Supply chain or operational updates",
-    "\n\nImportant context:",
-    "\n- Focus on quantifiable metrics and specific details",
-    "\n- Strip away management's fluffy commentary and corporate jargon",
-    "\n- Distinguish between actual results and forward-looking statements",
-    "\n- Note any inconsistencies between metrics and management's narrative",
-    "\n\nProvide a concise, objective analysis focusing on material information only."
+    "\n\nStructure:",
+    "\nStart with 2-3 sentences summarizing the key narrative and most important takeaways.",
+    "\n\nThen organize the details into these sections (use ### for headers):",
+    "\n### Financial Performance",
+    "\n- Revenue and margins",
+    "\n- Segment results",
+    "\n- Geographic performance",
+    "\n### Market & Operations",
+    "\n- End market trends",
+    "\n- Product/technical developments",
+    "\n- Supply chain/operations",
+    "\n### Forward Outlook",
+    "\n- Guidance",
+    "\n- Strategic initiatives",
+    "\n- Management commentary on trends",
+    "\n\nImportant guidelines:",
+    "\n- Use bullet points for specific metrics and details",
+    "\n- Focus on quantifiable results and concrete statements",
+    "\n- Strip away promotional language",
+    "\n- Note any inconsistencies between metrics and narrative",
+    "\n- Keep bullets concise but preserve important nuance",
+    "\n- Maintain proper markdown list formatting with blank lines between sections",
+    "\n- Use * for bullet points with 4 spaces for nesting",
+    "\n- Ensure each bullet point starts on a new line"
   )
 
   llm_request(
@@ -40,24 +52,29 @@ analyze_earnings_fundamentals <- function(transcript_result, ticker) {
 #' @export
 analyze_earnings_qa <- function(transcript_result, ticker) {
   prompt <- paste0(
-    sprintf("Analyze the Q&A section of this earnings call transcript from %s, focusing on sell-side analyst questions and management responses.",
+    sprintf("Analyze the Q&A section of this earnings call transcript from %s. Present your analysis in R markdown format with a narrative summary followed by structured insights.", 
             transcript_result$quarter),
-    "\n\nKey areas to examine:",
-    "\n- What specific concerns or doubts are analysts raising through their questions?",
-    "\n- Which topics received multiple questions or follow-ups?",
-    "\n- Were management's responses direct and specific, or vague and dismissive?",
-    "\n- What themes emerge from the line of questioning?",
-    "\n- Which analysts seemed skeptical vs. optimistic?",
-    "\n\nImportant context:",
-    "\n- The strongest signal comes from analysts' line of questioning",
-    "\n- Management is trained to spin positive narratives",
-    "\n- Look for disconnects between management responses and analyst concerns",
-    "\n- Note any topics management seemed to avoid or deflect",
-    "\n\nProvide an analysis that:",
-    "\n1. Identifies key themes in analyst questioning",
-    "\n2. Evaluates quality and directness of management responses",
-    "\n3. Highlights any notable skepticism or pressing concerns",
-    "\n4. Notes any disconnect between management's narrative and analysts' focus"
+    "\n\nStructure:",
+    "\nStart with 2-3 sentences capturing the key dynamic between analysts and management.",
+    "\n\nThen organize insights into these sections (use ### for headers):",
+    "\n### Key Themes & Concerns",
+    "\n- Major topics that received multiple questions",
+    "\n- Specific concerns raised by analysts",
+    "\n### Management Response Quality",
+    "\n- Areas where responses were detailed and direct",
+    "\n- Topics where management seemed evasive or vague",
+    "\n### Notable Dynamics",
+    "\n- Specific instances of analyst skepticism",
+    "\n- Key disconnects between management and analyst perspectives",
+    "\n\nImportant guidelines:",
+    "\n- Use bullet points for specific examples and details",
+    "\n- Focus on actual dialogue, not management spin",
+    "\n- Preserve important nuance while being concise",
+    "\n- Note analyst names when highlighting significant exchanges",
+    "\n- Look for patterns in questioning and response quality",
+    "\n- Maintain proper markdown list formatting with blank lines between sections",
+    "\n- Use * for bullet points with 4 spaces for nesting",
+    "\n- Ensure each bullet point starts on a new line"
   )
 
   llm_request(
@@ -69,6 +86,7 @@ analyze_earnings_qa <- function(transcript_result, ticker) {
     model = "claude-3-5-sonnet-latest"
   )
 }
+
 
 #' Get Complete Earnings Call Analysis
 #'
@@ -136,5 +154,42 @@ generate_business_narrative <- function(transcript_result, ticker) {
     cache_key = sprintf("%s_%s_narrative", ticker, transcript_result$quarter),
     response_type = "business_narrative",
     cache_dir = "cache/business_narratives"
+  )
+}
+
+#' Generate Enhanced Business Description from Multiple Sources
+#'
+#' @param alpha_vantage_desc Original company description from Alpha Vantage
+#' @param transcript_result List containing $text and $quarter from transcript fetch
+#' @param ticker Company ticker symbol
+#' @return Enhanced 200-word business description
+#' @export
+generate_combined_description <- function(alpha_vantage_desc, transcript_result, ticker) {
+  # Combine context sources
+  combined_context <- sprintf(
+    "ALPHA VANTAGE DESCRIPTION:\n%s\n\nLATEST EARNINGS CALL (%s):\n%s",
+    alpha_vantage_desc,
+    transcript_result$quarter,
+    transcript_result$text
+  )
+  
+  prompt <- paste0(
+    "You are a highly skilled equity analyst. Based on the provided company description and earnings call transcript, ",
+    "write a comprehensive yet concise (200 words, single paragraph) business description that addresses:\n",
+    "\n1. Core business model and how the company makes money",
+    "\n2. Key competitive advantages or differentiation",
+    "\n3. Market position and growth drivers",
+    "\n4. Critical business metrics or trends",
+    "\n5. Major risks or challenges",
+    "\n\nFocus on concrete facts and numbers from the earnings call while avoiding promotional language. ",
+    "The description should give an investor a clear understanding of what drives this business."
+  )
+
+  llm_request(
+    prompt = prompt,
+    context = combined_context,
+    cache_key = sprintf("%s_combined_description", ticker),
+    response_type = "combined_description",
+    max_tokens = 300
   )
 }

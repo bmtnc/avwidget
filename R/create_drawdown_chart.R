@@ -59,7 +59,7 @@ create_drawdown_chart <- function(df, ticker) {
       plot.margin = ggplot2::margin(t = 20, r = 50, b = 10, l = 10)
     ) +
     ggplot2::labs(
-      title = paste(ticker, "Drawdown"),
+      title = "Drawdown From Previous Highs",
       x = "",
       y = ""
     ) +
