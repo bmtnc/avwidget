@@ -2,7 +2,7 @@
 #'
 #' Creates a combination chart showing TTM EBIT trend and YoY growth rates
 #'
-#' @param financial_data DataFrame with quarterly financial data including ebit
+#' @param financial_data DataFrame with quarterly financial data including ebit_ttm; output from `calculate_ttm_metrics`
 #' @param ticker Character string of the stock ticker symbol
 #' @param start_date Start date for the chart (default: "2018-01-01")
 #' @return A grid arranged plot with TTM EBIT and growth rates
@@ -11,31 +11,25 @@
 #' @importFrom gridExtra grid.arrange
 create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-01-01") {
   # Input validation
-  if (!all(c("date", "ebit") %in% names(financial_data))) {
-    stop("financial_data must contain 'date' and 'ebit' columns")
+  if (!all(c("date", "ebit_ttm") %in% names(financial_data))) {
+    stop("financial_data must contain 'date' and 'ebit_ttm' columns")
   }
 
-  # Calculate TTM EBIT and YoY Growth in one pipeline
+  # Calculate YoY growth
   plot_data <- financial_data %>%
-    dplyr::mutate(ebit = as.numeric(ebit)) %>%
     dplyr::arrange(date) %>%
     dplyr::mutate(
-      # Calculate TTM using roll
-      ttm_ebit = roll::roll_sum(ebit, width = 4, min_obs = 4)
-    ) %>%
-    # Calculate YoY growth correctly
-    dplyr::mutate(
-      prior_year_ttm = dplyr::lag(ttm_ebit, 4),
+      prior_year_ttm = dplyr::lag(ebit_ttm, 4),
       yoy_growth = case_when(
         is.na(prior_year_ttm) ~ NA_real_,
         prior_year_ttm == 0 ~ NA_real_,
-        TRUE ~ ((ttm_ebit - prior_year_ttm) / abs(prior_year_ttm)) * 100
+        TRUE ~ ((ebit_ttm - prior_year_ttm) / abs(prior_year_ttm)) * 100
       ),
       growth_color = ifelse(yoy_growth >= 0, "positive", "negative")
     ) %>%
-    # Filter for complete cases and date range
     dplyr::filter(
-      !is.na(ttm_ebit),
+      !is.na(ebit_ttm),
+      !is.na(prior_year_ttm),
       date >= lubridate::as_date(start_date)
     )
 
@@ -50,7 +44,7 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
   )
 
   # Create TTM EBIT chart
-  p1 <- ggplot2::ggplot(plot_data, ggplot2::aes(x = date, y = ttm_ebit)) +
+  p1 <- ggplot2::ggplot(plot_data, ggplot2::aes(x = date, y = ebit_ttm)) +
     ggplot2::geom_col(fill = "steelblue", width = 85) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
@@ -61,7 +55,8 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
       plot.margin = ggplot2::unit(c(0.5, 0.5, 0, 0.5), "cm")
     ) +
     ggplot2::labs(
-      title = "TTM EBIT"
+      title = sprintf("%s: TTM EBIT", ticker),
+      y = "EBIT"
     ) +
     ggplot2::scale_y_continuous(
       labels = scales::dollar_format(scale = 1e-9, suffix = "B"),
@@ -72,8 +67,8 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
     ggplot2::annotate(
       "text",
       x = latest_data$date,
-      y = latest_data$ttm_ebit,
-      label = scales::dollar(latest_data$ttm_ebit, scale = 1e-9, suffix = "B"),
+      y = latest_data$ebit_ttm,
+      label = scales::dollar(latest_data$ebit_ttm, scale = 1e-9, suffix = "B", accuracy = 0.1),
       vjust = -0.5,
       size = 3
     )
@@ -84,6 +79,7 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
       aes(fill = growth_color),
       width = 85
     ) +
+    ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
     ggplot2::scale_fill_manual(
       values = c("positive" = "forestgreen", "negative" = "red"),
       guide = "none"
@@ -101,9 +97,8 @@ create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-
       labels = scales::number_format(suffix = "%"),
       limits = function(x) {
         max_abs <- max(abs(x), na.rm = TRUE)
-        c(-max_abs, max_abs) # Symmetrical limits
-      },
-      expand = ggplot2::expansion(mult = c(0.1, 0.1))
+        c(-max_abs * 1.1, max_abs * 1.1) # Symmetrical limits with padding
+      }
     ) +
     date_scale +
     # Add callout for latest growth value

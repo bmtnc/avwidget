@@ -2,7 +2,7 @@
 #'
 #' Creates a combination chart showing TTM Gross Profit trend and YoY growth rates
 #'
-#' @param financial_data DataFrame with quarterly financial data including gross_profit
+#' @param financial_data DataFrame with quarterly financial data including gross_profit_ttm
 #' @param ticker Character string of the stock ticker symbol
 #' @param start_date Start date for the chart (default: "2018-01-01")
 #' @return A grid arranged plot with TTM Gross Profit and growth rates
@@ -11,31 +11,26 @@
 #' @importFrom gridExtra grid.arrange
 create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01-01") {
   # Input validation
-  if (!all(c("date", "gross_profit") %in% names(financial_data))) {
-    stop("financial_data must contain 'date' and 'gross_profit' columns")
+  if (!all(c("date", "gross_profit_ttm") %in% names(financial_data))) {
+    stop("financial_data must contain 'date' and 'gross_profit_ttm' columns")
   }
 
-  # Calculate TTM Gross Profit and YoY Growth in one pipeline
+  # Calculate YoY growth from pre-calculated TTM values
   plot_data <- financial_data %>%
-    dplyr::mutate(gross_profit = as.numeric(gross_profit)) %>%
     dplyr::arrange(date) %>%
     dplyr::mutate(
-      # Calculate TTM using roll
-      ttm_gp = roll::roll_sum(gross_profit, width = 4, min_obs = 4)
-    ) %>%
-    # Calculate YoY growth correctly
-    dplyr::mutate(
-      prior_year_ttm = dplyr::lag(ttm_gp, 4),
+      prior_year_ttm = dplyr::lag(gross_profit_ttm, 4),
       yoy_growth = case_when(
         is.na(prior_year_ttm) ~ NA_real_,
         prior_year_ttm == 0 ~ NA_real_,
-        TRUE ~ ((ttm_gp - prior_year_ttm) / abs(prior_year_ttm)) * 100
+        TRUE ~ ((gross_profit_ttm - prior_year_ttm) / abs(prior_year_ttm)) * 100
       ),
       growth_color = ifelse(yoy_growth >= 0, "positive", "negative")
     ) %>%
     # Filter for complete cases and date range
     dplyr::filter(
-      !is.na(ttm_gp),
+      !is.na(gross_profit_ttm),
+      !is.na(prior_year_ttm),  # Remove incomplete YoY comparisons
       date >= lubridate::as_date(start_date)
     )
 
@@ -50,7 +45,7 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
   )
 
   # Create TTM Gross Profit chart
-  p1 <- ggplot2::ggplot(plot_data, ggplot2::aes(x = date, y = ttm_gp)) +
+  p1 <- ggplot2::ggplot(plot_data, ggplot2::aes(x = date, y = gross_profit_ttm)) +
     ggplot2::geom_col(fill = "steelblue", width = 85) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
@@ -61,7 +56,8 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
       plot.margin = ggplot2::unit(c(0.5, 0.5, 0, 0.5), "cm")
     ) +
     ggplot2::labs(
-      title = "TTM Gross Profit"
+      title = sprintf("%s: TTM Gross Profit", ticker),
+      y = "Gross Profit"
     ) +
     ggplot2::scale_y_continuous(
       labels = scales::dollar_format(scale = 1e-9, suffix = "B"),
@@ -72,8 +68,8 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
     ggplot2::annotate(
       "text",
       x = latest_data$date,
-      y = latest_data$ttm_gp,
-      label = scales::dollar(latest_data$ttm_gp, scale = 1e-9, suffix = "B"),
+      y = latest_data$gross_profit_ttm,
+      label = scales::dollar(latest_data$gross_profit_ttm, scale = 1e-9, suffix = "B", accuracy = 0.1),
       vjust = -0.5,
       size = 3
     )
@@ -84,6 +80,7 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
       aes(fill = growth_color),
       width = 85
     ) +
+    ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
     ggplot2::scale_fill_manual(
       values = c("positive" = "forestgreen", "negative" = "red"),
       guide = "none"
@@ -101,9 +98,8 @@ create_gp_growth_chart <- function(financial_data, ticker, start_date = "2018-01
       labels = scales::number_format(suffix = "%"),
       limits = function(x) {
         max_abs <- max(abs(x), na.rm = TRUE)
-        c(-max_abs, max_abs) # Symmetrical limits
-      },
-      expand = ggplot2::expansion(mult = c(0.1, 0.1))
+        c(-max_abs * 1.1, max_abs * 1.1) # Symmetrical limits with padding
+      }
     ) +
     date_scale +
     # Add callout for latest growth value

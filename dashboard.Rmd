@@ -97,8 +97,22 @@ Sys.sleep(1)  # 1 second delay
 # Third AV request - Financial Data
 financial_data <- create_financial_time_series(params$ticker, api_key, period = "quarterly")
 
+# Validate continuous quarterly data
+tryCatch({
+  check_continuous_quarterly_data(financial_data)
+}, error = function(e) {
+  warning("Data continuity check failed: ", e$message)
+})
 
-# Fourth AV request - Eanings Transcript
+# Calculate TTM metrics
+financial_data <- tryCatch({
+  calculate_ttm_metrics(financial_data)
+}, error = function(e) {
+  warning("TTM calculation failed: ", e$message)
+  financial_data  # return original data if TTM calc fails
+})
+
+# Fourth AV request - Earnings Transcript
 transcript_result <- tryCatch({
   fetch_transcript_text(params$ticker, latest_quarter, api_key)
 }, error = function(e) {
@@ -106,9 +120,8 @@ transcript_result <- tryCatch({
   NULL
 })
 
-# Calculate historical market cap
+# Calculate historical market cap (update to use TTM metrics if available)
 market_cap_history <- calculate_historical_market_cap(price_data, financial_data)
-
 
 ```
 
@@ -222,8 +235,8 @@ tryCatch({
 #### EBIT Growth
 ```{r plot-ebit-growth, fig.align = "center", fig.height=8, results='hide'}
 tryCatch({
-  if (!("ebit" %in% names(financial_data)) || 
-      all(is.na(financial_data$ebit))) {
+  if (!("ebit_ttm" %in% names(financial_data)) || 
+      all(is.na(financial_data$ebit_ttm))) {
     cat("EBIT Growth chart unavailable - insufficient data")
   } else {
     chart <- create_ebit_growth_chart(financial_data, params$ticker)
@@ -253,8 +266,8 @@ tryCatch({
 #### Gross Profit Growth
 ```{r plot-gp-growth, fig.align = "center", fig.height=8, results='hide'}
 tryCatch({
-  if (!("gross_profit" %in% names(financial_data)) || 
-      all(is.na(financial_data$gross_profit))) {
+  if (!("gross_profit_ttm" %in% names(financial_data)) || 
+      all(is.na(financial_data$gross_profit_ttm))) {
     cat("Gross Profit Growth chart unavailable - insufficient data")
   } else {
     chart <- create_gp_growth_chart(financial_data, params$ticker)
