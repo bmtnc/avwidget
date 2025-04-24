@@ -10,7 +10,7 @@
 #'
 #' @importFrom ggplot2 ggplot aes geom_line theme labs scale_y_continuous scale_x_date expansion
 #' @importFrom scales percent_format
-create_drawdown_chart <- function(df, ticker) {
+plot_drawdown <- function(df, ticker) {
   # Input validation
   if (!is.data.frame(df)) {
     stop(paste0("Expected df to be a data frame, but received: ", class(df)))

@@ -9,7 +9,7 @@
 #'
 #' @importFrom ggplot2 ggplot aes geom_line theme labs scale_y_continuous scale_x_date
 #' @importFrom gridExtra grid.arrange
-create_ebit_growth_chart <- function(financial_data, ticker, start_date = "2018-01-01") {
+plot_ebit_growth <- function(financial_data, ticker, start_date = "2018-01-01") {
   # Input validation
   if (!all(c("date", "ebit_ttm") %in% names(financial_data))) {
     stop("financial_data must contain 'date' and 'ebit_ttm' columns")

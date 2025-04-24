@@ -10,7 +10,7 @@
 #'
 #' @importFrom ggplot2 ggplot aes geom_line theme labs scale_y_continuous scale_x_date expansion
 #' @importFrom scales dollar_format
-create_price_chart <- function(df, ticker, start_date = "2018-01-01") {
+plot_price <- function(df, ticker, start_date = "2018-01-01") {
   # Input validation
   if (!is.data.frame(df)) {
     stop(paste0("Expected df to be a data frame, but received: ", class(df)))

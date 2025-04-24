@@ -71,7 +71,7 @@ raw_price_data <- fetch_weekly_prices(params$ticker, api_key)
 
 # adjusted close
 price_data <- raw_price_data %>%
-  dplyr::select(date, adjusted_close)
+  dplyr::select(date, close, adjusted_close)
 
 unadjusted_price_data <- raw_price_data %>%
   dplyr::select(date, close = close)
@@ -208,12 +208,12 @@ business_narrative <- NA
 
 #### Price History
 ```{r plot-chart-1, fig.align = "center", results='hide'}
-create_price_chart(price_data, params$ticker, start_date = "2018-01-01")
+plot_price(price_data, params$ticker, start_date = "2018-01-01")
 ```
 
 #### Market Cap History
 ```{r plot-chart-2, fig.align = "center", results='hide'}
-create_market_cap_chart(market_cap_history, params$ticker)
+plot_market_cap(market_cap_history, params$ticker)
 ```
 
 #### Price/EBIT
@@ -224,7 +224,7 @@ tryCatch({
       all(financial_data$ebit == 0)) {
     cat("Price/EBIT chart unavailable - insufficient EBIT data")
   } else {
-    chart <- create_price_ebit_chart(market_cap_history, financial_data, params$ticker)
+    chart <- plot_price_to_ebit(market_cap_history, financial_data, params$ticker)
     if (!is.null(chart)) print(chart)
   }
 }, error = function(e) {
@@ -239,7 +239,7 @@ tryCatch({
       all(is.na(financial_data$ebit_ttm))) {
     cat("EBIT Growth chart unavailable - insufficient data")
   } else {
-    chart <- create_ebit_growth_chart(financial_data, params$ticker)
+    chart <- plot_ebit_growth(financial_data, params$ticker)
     if (!is.null(chart)) print(chart)
   }
 }, error = function(e) {
@@ -255,7 +255,7 @@ tryCatch({
       all(financial_data$gross_profit == 0)) {
     cat("Price/Gross Profit chart unavailable - insufficient Gross Profit data")
   } else {
-    chart <- create_price_gp_chart(market_cap_history, financial_data, params$ticker)
+    chart <- plot_price_to_gp(market_cap_history, financial_data, params$ticker)
     if (!is.null(chart)) print(chart)
   }
 }, error = function(e) {
@@ -270,7 +270,7 @@ tryCatch({
       all(is.na(financial_data$gross_profit_ttm))) {
     cat("Gross Profit Growth chart unavailable - insufficient data")
   } else {
-    chart <- create_gp_growth_chart(financial_data, params$ticker)
+    chart <- plot_gp_growth(financial_data, params$ticker)
     if (!is.null(chart)) print(chart)
   }
 }, error = function(e) {
@@ -280,7 +280,7 @@ tryCatch({
 
 #### Drawdown Analysis
 ```{r plot-chart-3, fig.align = "center", results='hide'}
-create_drawdown_chart(price_data, params$ticker)
+plot_drawdown(price_data, params$ticker)
 ```
 
 

@@ -8,13 +8,13 @@
 #'
 #' @return A ggplot2 object containing the market cap chart
 #'
-create_market_cap_chart <- function(df, ticker, start_date = "2018-01-01") {
+plot_market_cap <- function(df, ticker, start_date = "2018-01-01") {
   # Input validation
   if (!is.data.frame(df)) {
     stop(paste0("Expected df to be a data frame, but received: ", class(df)))
   }
 
-  required_cols <- c("date", "market_cap_billions")
+  required_cols <- c("date", "market_cap")
   if (!all(required_cols %in% names(df))) {
     stop(paste0("df must contain columns: ", paste(required_cols, collapse = ", "),
                 ". Found columns: ", paste(names(df), collapse = ", ")))
@@ -23,6 +23,10 @@ create_market_cap_chart <- function(df, ticker, start_date = "2018-01-01") {
   # Filter data by start_date
   df_filtered <- df %>%
     dplyr::filter(date >= lubridate::as_date(start_date))
+
+  # Convert market_cap to billions for display
+  df_filtered <- df_filtered %>%
+    dplyr::mutate(market_cap_billions = market_cap / 1000000000)
 
   # Get latest value for annotation
   latest_date <- max(df_filtered$date)

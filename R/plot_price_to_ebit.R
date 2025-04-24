@@ -12,7 +12,7 @@
 #' @importFrom ggplot2 ggplot aes geom_line theme labs scale_y_continuous scale_x_date
 #' @importFrom tidyr fill
 #' @importFrom dplyr left_join mutate arrange lag
-create_price_ebit_chart <- function(market_cap_history, financial_data,
+plot_price_to_ebit <- function(market_cap_history, financial_data,
                                   ticker, start_date = "2018-01-01") {
   # Input validation
   if (!all(c("date", "market_cap") %in% names(market_cap_history))) {

@@ -72,6 +72,30 @@
       ],
       "Hash": "6b868847b365672d6c1677b1608da9ed"
     },
+    "RcppArmadillo": {
+      "Package": "RcppArmadillo",
+      "Version": "14.4.1-1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "methods",
+        "stats",
+        "utils"
+      ],
+      "Hash": "d2db71ca6fcb649bdc599391d0687b48"
+    },
+    "RcppParallel": {
+      "Package": "RcppParallel",
+      "Version": "5.1.10",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "34ee3ba92c1b2df651980325523ed22a"
+    },
     "V8": {
       "Package": "V8",
       "Version": "6.0.0",
@@ -666,21 +690,6 @@
       ],
       "Hash": "d55aa087c47a63ead0f6fc10f8fa1ee0"
     },
-    "httr": {
-      "Package": "httr",
-      "Version": "1.4.7",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "R6",
-        "curl",
-        "jsonlite",
-        "mime",
-        "openssl"
-      ],
-      "Hash": "ac107251d9d9fd72f0ca8049988f1d7f"
-    },
     "httr2": {
       "Package": "httr2",
       "Version": "1.0.7",
@@ -1241,6 +1250,18 @@
       ],
       "Hash": "df99277f63d01c34e95e3d2f06a79736"
     },
+    "roll": {
+      "Package": "roll",
+      "Version": "1.1.7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Rcpp",
+        "RcppArmadillo",
+        "RcppParallel"
+      ],
+      "Hash": "ca6b40e8e7d2a5ff8149abb1c01eab07"
+    },
     "roxygen2": {
       "Package": "roxygen2",
       "Version": "7.3.2",
@@ -1732,6 +1753,21 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "fcc4bd8e6da2d2011eb64a5e5cc685ab"
+    },
+    "zoo": {
+      "Package": "zoo",
+      "Version": "1.8-14",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "grDevices",
+        "graphics",
+        "lattice",
+        "stats",
+        "utils"
+      ],
+      "Hash": "d55a14a07e7f0b4a66f432198bcca194"
     }
   }
 }
